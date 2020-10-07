@@ -36,14 +36,15 @@ async function run() {
     });
 
     if (!anyMatches) {
-      return await createCheck(client,{
+      core.debug(`Running adding of check`);
+      await createCheck(client,{
         status: 'in_progress',
         title: 'Title in invalid format',
         summary: `The title ${title} must match \`[SW-123]: text\` format.`,
         text: 'Additional text is always cool.',
       });
     } else {
-      return await createCheck(client,{
+      await createCheck(client,{
         status: 'completed',
         title: 'Ready for review',
         summary: `The title ${title} is in appropriate format.`,
@@ -130,6 +131,7 @@ async function createCheck(client: github.GitHub, values: any) {
     started_at: new Date().toISOString(),
     ...values,
   });
+  core.debug(`Ran the check with ${JSON.stringify(values)}`);
   return data.id;
 }
 

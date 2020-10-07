@@ -14557,7 +14557,8 @@ function run() {
                 return (new RegExp(format)).test(title);
             });
             if (!anyMatches) {
-                return yield createCheck(client, {
+                core.debug(`Running adding of check`);
+                yield createCheck(client, {
                     status: 'in_progress',
                     title: 'Title in invalid format',
                     summary: `The title ${title} must match \`[SW-123]: text\` format.`,
@@ -14565,7 +14566,7 @@ function run() {
                 });
             }
             else {
-                return yield createCheck(client, {
+                yield createCheck(client, {
                     status: 'completed',
                     title: 'Ready for review',
                     summary: `The title ${title} is in appropriate format.`,
@@ -14631,6 +14632,7 @@ function createCheck(client, values) {
         };
         let sha = github.context.sha;
         const { data } = yield client.checks.create(Object.assign(Object.assign(Object.assign({}, ownership), { head_sha: sha, name: 'PR Naming Checker', started_at: new Date().toISOString() }), values));
+        core.debug(`Ran the check with ${JSON.stringify(values)}`);
         return data.id;
     });
 }
