@@ -78,7 +78,7 @@ async function dismissReview(pullRequest: {
         repo: pullRequest.repo,
         pull_number: pullRequest.number,
         review_id: review.id,
-        message: "All good!",
+        message: "All good 🙋‍♂️",
       });
     }
   });
