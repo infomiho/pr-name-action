@@ -127,7 +127,7 @@ async function createCheck(client: github.GitHub, ownership: any, sha: string, v
   const { data } = await client.checks.create({
     ...ownership,
     head_sha: sha,
-    name: name,
+    name: 'pr_naming_checker',
     started_at: new Date().toISOString(),
     ...values,
   });
