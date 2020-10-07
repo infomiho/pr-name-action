@@ -14630,7 +14630,7 @@ function getAllowedFormatsFromObject(configObject) {
 }
 function createCheck(client, ownership, sha, values) {
     return __awaiter(this, void 0, void 0, function* () {
-        const { data } = yield client.checks.create(Object.assign(Object.assign(Object.assign({}, ownership), { head_sha: sha, name: name, started_at: new Date().toISOString() }), values));
+        const { data } = yield client.checks.create(Object.assign(Object.assign(Object.assign({}, ownership), { head_sha: sha, name: 'PR Naming Checker', started_at: new Date().toISOString() }), values));
         return data.id;
     });
 }
