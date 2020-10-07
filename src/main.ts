@@ -4,7 +4,10 @@ import * as github from "@actions/github";
 const repoTokenInput = core.getInput("repo-token", { required: true });
 const githubClient = new github.GitHub(repoTokenInput);
 
-const titleRegexInput: string = core.getInput("title-regex", {
+const titlePrefixes: string[] = core.getInput("prefixes", {
+  required: true,
+}).split("|");
+const titleFallback: string = core.getInput("no-ticket", {
   required: true,
 });
 const onFailedRegexCreateReviewInput: boolean =
@@ -21,12 +24,18 @@ async function run(): Promise<void> {
   const githubContext = github.context;
   const pullRequest = githubContext.issue;
 
+  const titleRegexInput = `\\[((${titlePrefixes.join("|")})\\-\\d+|${titleFallback}] .+`;
   const titleRegex = new RegExp(titleRegexInput);
   const title: string =
       (githubContext.payload.pull_request?.title as string) ?? "";
   const comment = onFailedRegexCommentInput.replace(
-      "%regex%",
-      titleRegex.source
+      "%formats%",
+      [
+        ...titlePrefixes.map(prefix => `${prefix}-123`),
+          titleFallback
+      ].map(
+          input => `1. \`[${input}] text\``
+      ).join('\n')
   );
 
   core.debug(`Title Regex: ${titleRegex.source}`);

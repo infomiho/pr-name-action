@@ -13613,7 +13613,10 @@ const core = __importStar(__webpack_require__(186));
 const github = __importStar(__webpack_require__(438));
 const repoTokenInput = core.getInput("repo-token", { required: true });
 const githubClient = new github.GitHub(repoTokenInput);
-const titleRegexInput = core.getInput("title-regex", {
+const titlePrefixes = core.getInput("prefixes", {
+    required: true,
+}).split("|");
+const titleFallback = core.getInput("no-ticket", {
     required: true,
 });
 const onFailedRegexCreateReviewInput = core.getInput("on-failed-regex-create-review") == "true";
@@ -13625,9 +13628,13 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         const githubContext = github.context;
         const pullRequest = githubContext.issue;
+        const titleRegexInput = `\\[((${titlePrefixes.join("|")})\\-\\d+|${titleFallback}] .+`;
         const titleRegex = new RegExp(titleRegexInput);
         const title = (_b = (_a = githubContext.payload.pull_request) === null || _a === void 0 ? void 0 : _a.title) !== null && _b !== void 0 ? _b : "";
-        const comment = onFailedRegexCommentInput.replace("%regex%", titleRegex.source);
+        const comment = onFailedRegexCommentInput.replace("%formats%", [
+            ...titlePrefixes.map(prefix => `${prefix}-123`),
+            titleFallback
+        ].map(input => `1. \`[${input}] text\``).join('\n'));
         core.debug(`Title Regex: ${titleRegex.source}`);
         core.debug(`Title: ${title}`);
         const titleMatchesRegex = titleRegex.test(title);
