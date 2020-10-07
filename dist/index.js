@@ -14552,7 +14552,13 @@ function run() {
             const title = pullRequest.title;
             core.debug(`pr title ${title}`);
             const allowedFormats = yield getAllowedFormats(client, configPath);
-            core.debug(`allowed formats #${JSON.stringify(allowedFormats)}`);
+            core.debug(`allowed formats ${JSON.stringify(allowedFormats)}`);
+            const anyMatches = allowedFormats.some(format => {
+                return (new RegExp(format)).test(title);
+            });
+            if (!anyMatches) {
+                throw new Error(`The title ${title} must match \`[SW-123]: text\` format`);
+            }
         }
         catch (error) {
             core.error(error);
