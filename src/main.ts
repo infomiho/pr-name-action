@@ -24,7 +24,7 @@ async function run(): Promise<void> {
   const githubContext = github.context;
   const pullRequest = githubContext.issue;
 
-  const titleRegexInput = `\\[((${titlePrefixes.join("|")})\\-\\d+|${titleFallback}] .+`;
+  const titleRegexInput = `\\[((${titlePrefixes.join("|")})\\-\\d+|${titleFallback})] .+`;
   const titleRegex = new RegExp(titleRegexInput);
   const title: string =
       (githubContext.payload.pull_request?.title as string) ?? "";

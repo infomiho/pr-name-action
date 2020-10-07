@@ -13628,7 +13628,7 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         const githubContext = github.context;
         const pullRequest = githubContext.issue;
-        const titleRegexInput = `\\[((${titlePrefixes.join("|")})\\-\\d+|${titleFallback}] .+`;
+        const titleRegexInput = `\\[((${titlePrefixes.join("|")})\\-\\d+|${titleFallback})] .+`;
         const titleRegex = new RegExp(titleRegexInput);
         const title = (_b = (_a = githubContext.payload.pull_request) === null || _a === void 0 ? void 0 : _a.title) !== null && _b !== void 0 ? _b : "";
         const comment = onFailedRegexCommentInput.replace("%formats%", [
