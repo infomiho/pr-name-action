@@ -1,138 +1,89 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import * as yaml from "js-yaml";
-import {create} from "domain";
 
-async function run() {
-  try {
-    const token = core.getInput("repo-token", { required: true });
-    const configPath = core.getInput("configuration-path", { required: true });
+const repoTokenInput = core.getInput("repo-token", { required: true });
+const githubClient = new github.GitHub(repoTokenInput);
 
-    const prNumber = getPrNumber();
-    if (!prNumber) {
-      console.log("Could not get pull request number from context, exiting");
-      return;
-    }
+const titleRegexInput: string = core.getInput("title-regex", {
+  required: true,
+});
+const onFailedRegexCreateReviewInput: boolean =
+    core.getInput("on-failed-regex-create-review") == "true";
+const onFailedRegexCommentInput: string = core.getInput(
+    "on-failed-regex-comment"
+);
+const onFailedRegexFailActionInput: boolean =
+    core.getInput("on-failed-regex-fail-action") == "true";
+const onFailedRegexRequestChanges: boolean =
+    core.getInput("on-failed-regex-request-changes") == "true";
 
-    const client = new github.GitHub(token);
+async function run(): Promise<void> {
+  const githubContext = github.context;
+  const pullRequest = githubContext.issue;
 
-    const { data: pullRequest } = await client.pulls.get({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-      pull_number: prNumber
-    });
-
-    const title = pullRequest.title;
-    core.debug(`pr title ${title}`);
-
-    const allowedFormats: string[] = await getAllowedFormats(
-      client,
-      configPath
-    );
-
-    core.debug(`allowed formats ${JSON.stringify(allowedFormats)}`);
-    const anyMatches = allowedFormats.some(format => {
-      return (new RegExp(format)).test(title);
-    });
-
-    // if (!anyMatches) {
-    //   core.debug(`Running adding of check`);
-    //   await createCheck(client,{
-    //     status: 'in_progress',
-    //     title: 'Title in invalid format',
-    //     summary: `The title ${title} must match \`[SW-123]: text\` format.`,
-    //     text: 'Additional text is always cool.',
-    //   });
-    // } else {
-    //   await createCheck(client,{
-    //     status: 'completed',
-    //     title: 'Ready for review',
-    //     summary: `The title ${title} is in appropriate format.`,
-    //   });
-    // }
-
-    if (!anyMatches) {
-      core.setFailed(`The title ${title} must match \`[SW-123]: text\` format`);
-    }
-  } catch (error) {
-    core.error(error);
-    core.setFailed(error.message);
-  }
-}
-
-function getPrNumber(): number | undefined {
-  const pullRequest = github.context.payload.pull_request;
-  if (!pullRequest) {
-    return undefined;
-  }
-
-  return pullRequest.number;
-}
-
-async function getAllowedFormats(
-  client: github.GitHub,
-  configurationPath: string
-): Promise<string[]> {
-  const configurationContent: string = await fetchContent(
-    client,
-    configurationPath
+  const titleRegex = new RegExp(titleRegexInput);
+  const title: string =
+      (githubContext.payload.pull_request?.title as string) ?? "";
+  const comment = onFailedRegexCommentInput.replace(
+      "%regex%",
+      titleRegex.source
   );
 
-  // loads (hopefully) a `{[label:string]: string | StringOrMatchConfig[]}`, but is `any`:
-  const configObject: any = yaml.safeLoad(configurationContent);
+  core.debug(`Title Regex: ${titleRegex.source}`);
+  core.debug(`Title: ${title}`);
 
-  // transform `any` => `Map<string,StringOrMatchConfig[]>` or throw if yaml is malformed:
-  return getAllowedFormatsFromObject(configObject);
-}
-
-async function fetchContent(
-  client: github.GitHub,
-  repoPath: string
-): Promise<string> {
-  const response: any = await client.repos.getContents({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-    path: repoPath,
-    ref: github.context.sha
-  });
-
-  return Buffer.from(response.data.content, response.data.encoding).toString();
-}
-
-function getAllowedFormatsFromObject(
-  configObject: any
-): string[] {
-  const allowedFormats: string[] = []
-  for (const label in configObject) {
-    if (typeof configObject[label] === "string") {
-      allowedFormats.push(configObject[label]);
-    } else if (configObject[label] instanceof Array) {
-      configObject[label].forEach(value => allowedFormats.push(value));
-    } else {
-      throw Error(
-        `found unexpected type for label ${label} (should be string or array of globs)`
-      );
+  const titleMatchesRegex: boolean = titleRegex.test(title);
+  if (!titleMatchesRegex) {
+    if (onFailedRegexCreateReviewInput) {
+      createReview(comment, pullRequest);
+    }
+    if (onFailedRegexFailActionInput) {
+      core.setFailed(comment);
+    }
+  } else {
+    if (onFailedRegexCreateReviewInput) {
+      await dismissReview(pullRequest);
     }
   }
-
-  return allowedFormats;
 }
 
-async function createCheck(client: github.GitHub, values: any) {
-  const ownership = {
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-  };
-  let sha = github.context.sha;
-  const { data } = await client.checks.create({
-    ...ownership,
-    head_sha: sha,
-    name: 'PR Naming Checker',
-    started_at: new Date().toISOString(),
-    ...values,
+function createReview(
+    comment: string,
+    pullRequest: { owner: string; repo: string; number: number }
+) {
+  void githubClient.pulls.createReview({
+    owner: pullRequest.owner,
+    repo: pullRequest.repo,
+    pull_number: pullRequest.number,
+    body: comment,
+    event: onFailedRegexRequestChanges ? "REQUEST_CHANGES" : "COMMENT",
   });
-  core.debug(`Ran the check with ${JSON.stringify(values)}`);
-  return data.id;
 }
 
-run();
+async function dismissReview(pullRequest: {
+  owner: string;
+  repo: string;
+  number: number;
+}) {
+  const reviews = await githubClient.pulls.listReviews({
+    owner: pullRequest.owner,
+    repo: pullRequest.repo,
+    pull_number: pullRequest.number,
+  });
+
+  reviews.data.forEach((review) => {
+    if (review.user.login == "github-actions[bot]") {
+      void githubClient.pulls.dismissReview({
+        owner: pullRequest.owner,
+        repo: pullRequest.repo,
+        pull_number: pullRequest.number,
+        review_id: review.id,
+        message: "All good!",
+      });
+    }
+  });
+}
+
+run().catch((error) => {
+  core.setFailed(error);
+});
