@@ -14549,8 +14549,8 @@ function run() {
                 repo: github.context.repo.repo,
                 pull_number: prNumber
             });
-            core.debug(`pr data ${JSON.stringify(pullRequest)}`);
-            core.debug(`fetching changed files for pr #${prNumber}`);
+            const title = pullRequest.title;
+            core.debug(`pr title ${title}`);
             const allowedFormats = yield getAllowedFormats(client, configPath);
             core.debug(`allowed formats #${JSON.stringify(allowedFormats)}`);
         }
@@ -14593,6 +14593,9 @@ function getAllowedFormatsFromObject(configObject) {
         if (typeof configObject[label] === "string") {
             allowedFormats.push(configObject[label]);
         }
+        else if (configObject[label] instanceof Array) {
+            configObject[label].forEach(value => allowedFormats.push(value));
+        }
         else {
             throw Error(`found unexpected type for label ${label} (should be string or array of globs)`);
         }
@@ -14604,16 +14607,6 @@ function checkGlobs(changedFiles, globs) {
         core.debug(` checking pattern ${JSON.stringify(glob)}`);
     }
     return true;
-}
-function addLabels(client, prNumber, labels) {
-    return __awaiter(this, void 0, void 0, function* () {
-        yield client.issues.addLabels({
-            owner: github.context.repo.owner,
-            repo: github.context.repo.repo,
-            issue_number: prNumber,
-            labels: labels
-        });
-    });
 }
 run();
 

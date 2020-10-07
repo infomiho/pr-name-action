@@ -28,17 +28,15 @@ async function run() {
       pull_number: prNumber
     });
 
-    core.debug(`pr data ${JSON.stringify(pullRequest)}`);
+    const title = pullRequest.title;
+    core.debug(`pr title ${title}`);
 
-
-    core.debug(`fetching changed files for pr #${prNumber}`);
     const allowedFormats: string[] = await getAllowedFormats(
       client,
       configPath
     );
 
     core.debug(`allowed formats #${JSON.stringify(allowedFormats)}`);
-
   } catch (error) {
     core.error(error);
     core.setFailed(error.message);
@@ -91,6 +89,8 @@ function getAllowedFormatsFromObject(
   for (const label in configObject) {
     if (typeof configObject[label] === "string") {
       allowedFormats.push(configObject[label]);
+    } else if (configObject[label] instanceof Array) {
+      configObject[label].forEach(value => allowedFormats.push(value));
     } else {
       throw Error(
         `found unexpected type for label ${label} (should be string or array of globs)`
@@ -109,20 +109,6 @@ function checkGlobs(
     core.debug(` checking pattern ${JSON.stringify(glob)}`);
   }
   return true;
-}
-
-
-async function addLabels(
-  client: github.GitHub,
-  prNumber: number,
-  labels: string[]
-) {
-  await client.issues.addLabels({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-    issue_number: prNumber,
-    labels: labels
-  });
 }
 
 run();
