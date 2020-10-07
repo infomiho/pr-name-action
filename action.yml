@@ -1,16 +1,12 @@
-name: 'Labeler'
-description: 'Add labels to new pull requests based on the files that are changed'
-author: 'GitHub'
+name: 'Pull Request Naming Checker'
+description: 'Check if pull request title matches any of defined formats'
+author: 'infomiho'
 inputs: 
   repo-token:
     description: 'The GITHUB_TOKEN secret'
   configuration-path:
-    description: 'The path for the label configurations'
-    default: '.github/labeler.yml'
-    required: false
-  sync-labels:
-    description: 'Whether or not to remove labels when matching files are reverted'
-    default: false
+    description: 'The path for the naming configurations'
+    default: '.github/pr-naming.yml'
     required: false
 
 runs:
