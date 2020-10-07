@@ -14556,25 +14556,24 @@ function run() {
             const anyMatches = allowedFormats.some(format => {
                 return (new RegExp(format)).test(title);
             });
-            if (!anyMatches) {
-                core.debug(`Running adding of check`);
-                yield createCheck(client, {
-                    status: 'in_progress',
-                    title: 'Title in invalid format',
-                    summary: `The title ${title} must match \`[SW-123]: text\` format.`,
-                    text: 'Additional text is always cool.',
-                });
-            }
-            else {
-                yield createCheck(client, {
-                    status: 'completed',
-                    title: 'Ready for review',
-                    summary: `The title ${title} is in appropriate format.`,
-                });
-            }
             // if (!anyMatches) {
-            //   throw new Error(`The title ${title} must match \`[SW-123]: text\` format`);
+            //   core.debug(`Running adding of check`);
+            //   await createCheck(client,{
+            //     status: 'in_progress',
+            //     title: 'Title in invalid format',
+            //     summary: `The title ${title} must match \`[SW-123]: text\` format.`,
+            //     text: 'Additional text is always cool.',
+            //   });
+            // } else {
+            //   await createCheck(client,{
+            //     status: 'completed',
+            //     title: 'Ready for review',
+            //     summary: `The title ${title} is in appropriate format.`,
+            //   });
             // }
+            if (!anyMatches) {
+                core.setFailed(`The title ${title} must match \`[SW-123]: text\` format`);
+            }
         }
         catch (error) {
             core.error(error);
