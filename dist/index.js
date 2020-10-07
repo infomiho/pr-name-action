@@ -14538,6 +14538,11 @@ function run() {
         try {
             const token = core.getInput("repo-token", { required: true });
             const configPath = core.getInput("configuration-path", { required: true });
+            const ownership = {
+                owner: github.context.repo.owner,
+                repo: github.context.repo.repo,
+            };
+            let sha = github.context.sha;
             const prNumber = getPrNumber();
             if (!prNumber) {
                 console.log("Could not get pull request number from context, exiting");
@@ -14557,8 +14562,23 @@ function run() {
                 return (new RegExp(format)).test(title);
             });
             if (!anyMatches) {
-                throw new Error(`The title ${title} must match \`[SW-123]: text\` format`);
+                return yield createCheck(client, ownership, sha, {
+                    status: 'in_progress',
+                    title: 'Title in invalid format',
+                    summary: `The title ${title} must match \`[SW-123]: text\` format.`,
+                    text: 'Additional text is always cool.',
+                });
             }
+            else {
+                return yield createCheck(client, ownership, sha, {
+                    status: 'completed',
+                    title: 'Ready for review',
+                    summary: `The title ${title} is in appropriate format.`,
+                });
+            }
+            // if (!anyMatches) {
+            //   throw new Error(`The title ${title} must match \`[SW-123]: text\` format`);
+            // }
         }
         catch (error) {
             core.error(error);
@@ -14608,11 +14628,11 @@ function getAllowedFormatsFromObject(configObject) {
     }
     return allowedFormats;
 }
-function checkGlobs(changedFiles, globs) {
-    for (const glob of globs) {
-        core.debug(` checking pattern ${JSON.stringify(glob)}`);
-    }
-    return true;
+function createCheck(client, ownership, sha, values) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const { data } = yield client.checks.create(Object.assign(Object.assign(Object.assign({}, ownership), { head_sha: sha, name: name, started_at: new Date().toISOString() }), values));
+        return data.id;
+    });
 }
 run();
 

@@ -1,18 +1,18 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import * as yaml from "js-yaml";
-
-interface MatchConfig {
-  all?: string[];
-  any?: string[];
-}
-
-type StringOrMatchConfig = string | MatchConfig;
+import {create} from "domain";
 
 async function run() {
   try {
     const token = core.getInput("repo-token", { required: true });
     const configPath = core.getInput("configuration-path", { required: true });
+
+    const ownership = {
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+    };
+    let sha = github.context.sha;
 
     const prNumber = getPrNumber();
     if (!prNumber) {
@@ -42,8 +42,23 @@ async function run() {
     });
 
     if (!anyMatches) {
-      throw new Error(`The title ${title} must match \`[SW-123]: text\` format`);
+      return await createCheck(client, ownership, sha, {
+        status: 'in_progress',
+        title: 'Title in invalid format',
+        summary: `The title ${title} must match \`[SW-123]: text\` format.`,
+        text: 'Additional text is always cool.',
+      });
+    } else {
+      return await createCheck(client, ownership, sha, {
+        status: 'completed',
+        title: 'Ready for review',
+        summary: `The title ${title} is in appropriate format.`,
+      });
     }
+
+    // if (!anyMatches) {
+    //   throw new Error(`The title ${title} must match \`[SW-123]: text\` format`);
+    // }
   } catch (error) {
     core.error(error);
     core.setFailed(error.message);
@@ -108,14 +123,15 @@ function getAllowedFormatsFromObject(
   return allowedFormats;
 }
 
-function checkGlobs(
-  changedFiles: string[],
-  globs: StringOrMatchConfig[]
-): boolean {
-  for (const glob of globs) {
-    core.debug(` checking pattern ${JSON.stringify(glob)}`);
-  }
-  return true;
+async function createCheck(client: github.GitHub, ownership: any, sha: string, values: any) {
+  const { data } = await client.checks.create({
+    ...ownership,
+    head_sha: sha,
+    name: name,
+    started_at: new Date().toISOString(),
+    ...values,
+  });
+  return data.id;
 }
 
 run();
