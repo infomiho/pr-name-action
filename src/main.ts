@@ -8,12 +8,6 @@ async function run() {
     const token = core.getInput("repo-token", { required: true });
     const configPath = core.getInput("configuration-path", { required: true });
 
-    const ownership = {
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-    };
-    let sha = github.context.sha;
-
     const prNumber = getPrNumber();
     if (!prNumber) {
       console.log("Could not get pull request number from context, exiting");
@@ -42,14 +36,14 @@ async function run() {
     });
 
     if (!anyMatches) {
-      return await createCheck(client, ownership, sha, {
+      return await createCheck(client,{
         status: 'in_progress',
         title: 'Title in invalid format',
         summary: `The title ${title} must match \`[SW-123]: text\` format.`,
         text: 'Additional text is always cool.',
       });
     } else {
-      return await createCheck(client, ownership, sha, {
+      return await createCheck(client,{
         status: 'completed',
         title: 'Ready for review',
         summary: `The title ${title} is in appropriate format.`,
@@ -123,7 +117,12 @@ function getAllowedFormatsFromObject(
   return allowedFormats;
 }
 
-async function createCheck(client: github.GitHub, ownership: any, sha: string, values: any) {
+async function createCheck(client: github.GitHub, values: any) {
+  const ownership = {
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+  };
+  let sha = github.context.sha;
   const { data } = await client.checks.create({
     ...ownership,
     head_sha: sha,

@@ -14538,11 +14538,6 @@ function run() {
         try {
             const token = core.getInput("repo-token", { required: true });
             const configPath = core.getInput("configuration-path", { required: true });
-            const ownership = {
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
-            };
-            let sha = github.context.sha;
             const prNumber = getPrNumber();
             if (!prNumber) {
                 console.log("Could not get pull request number from context, exiting");
@@ -14562,7 +14557,7 @@ function run() {
                 return (new RegExp(format)).test(title);
             });
             if (!anyMatches) {
-                return yield createCheck(client, ownership, sha, {
+                return yield createCheck(client, {
                     status: 'in_progress',
                     title: 'Title in invalid format',
                     summary: `The title ${title} must match \`[SW-123]: text\` format.`,
@@ -14570,7 +14565,7 @@ function run() {
                 });
             }
             else {
-                return yield createCheck(client, ownership, sha, {
+                return yield createCheck(client, {
                     status: 'completed',
                     title: 'Ready for review',
                     summary: `The title ${title} is in appropriate format.`,
@@ -14628,8 +14623,13 @@ function getAllowedFormatsFromObject(configObject) {
     }
     return allowedFormats;
 }
-function createCheck(client, ownership, sha, values) {
+function createCheck(client, values) {
     return __awaiter(this, void 0, void 0, function* () {
+        const ownership = {
+            owner: github.context.repo.owner,
+            repo: github.context.repo.repo,
+        };
+        let sha = github.context.sha;
         const { data } = yield client.checks.create(Object.assign(Object.assign(Object.assign({}, ownership), { head_sha: sha, name: 'PR Naming Checker', started_at: new Date().toISOString() }), values));
         return data.id;
     });
