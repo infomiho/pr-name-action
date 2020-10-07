@@ -28,27 +28,17 @@ async function run() {
       pull_number: prNumber
     });
 
-    console.log("Found the following data", pullRequest);
+    core.debug(`pr data ${JSON.stringify(pullRequest)}`);
 
 
     core.debug(`fetching changed files for pr #${prNumber}`);
-    const changedFiles: string[] = await getChangedFiles(client, prNumber);
-    const labelGlobs: Map<string, StringOrMatchConfig[]> = await getLabelGlobs(
+    const allowedFormats: string[] = await getAllowedFormats(
       client,
       configPath
     );
 
-    const labels: string[] = [];
-    for (const [label, globs] of labelGlobs.entries()) {
-      core.debug(`processing ${label}`);
-      if (checkGlobs(changedFiles, globs)) {
-        labels.push(label);
-      }
-    }
+    core.debug(`allowed formats #${JSON.stringify(allowedFormats)}`);
 
-    if (labels.length > 0) {
-      await addLabels(client, prNumber, labels);
-    }
   } catch (error) {
     core.error(error);
     core.setFailed(error.message);
@@ -64,31 +54,10 @@ function getPrNumber(): number | undefined {
   return pullRequest.number;
 }
 
-async function getChangedFiles(
-  client: github.GitHub,
-  prNumber: number
-): Promise<string[]> {
-  const listFilesOptions = client.pulls.listFiles.endpoint.merge({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-    pull_number: prNumber
-  });
-
-  const listFilesResponse = await client.paginate(listFilesOptions);
-  const changedFiles = listFilesResponse.map(f => f.filename);
-
-  core.debug("found changed files:");
-  for (const file of changedFiles) {
-    core.debug("  " + file);
-  }
-
-  return changedFiles;
-}
-
-async function getLabelGlobs(
+async function getAllowedFormats(
   client: github.GitHub,
   configurationPath: string
-): Promise<Map<string, StringOrMatchConfig[]>> {
+): Promise<string[]> {
   const configurationContent: string = await fetchContent(
     client,
     configurationPath
@@ -98,7 +67,7 @@ async function getLabelGlobs(
   const configObject: any = yaml.safeLoad(configurationContent);
 
   // transform `any` => `Map<string,StringOrMatchConfig[]>` or throw if yaml is malformed:
-  return getLabelGlobMapFromObject(configObject);
+  return getAllowedFormatsFromObject(configObject);
 }
 
 async function fetchContent(
@@ -115,15 +84,13 @@ async function fetchContent(
   return Buffer.from(response.data.content, response.data.encoding).toString();
 }
 
-function getLabelGlobMapFromObject(
+function getAllowedFormatsFromObject(
   configObject: any
-): Map<string, StringOrMatchConfig[]> {
-  const labelGlobs: Map<string, StringOrMatchConfig[]> = new Map();
+): string[] {
+  const allowedFormats: string[] = []
   for (const label in configObject) {
     if (typeof configObject[label] === "string") {
-      labelGlobs.set(label, [configObject[label]]);
-    } else if (configObject[label] instanceof Array) {
-      labelGlobs.set(label, configObject[label]);
+      allowedFormats.push(configObject[label]);
     } else {
       throw Error(
         `found unexpected type for label ${label} (should be string or array of globs)`
@@ -131,7 +98,7 @@ function getLabelGlobMapFromObject(
     }
   }
 
-  return labelGlobs;
+  return allowedFormats;
 }
 
 function checkGlobs(

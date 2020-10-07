@@ -14549,20 +14549,10 @@ function run() {
                 repo: github.context.repo.repo,
                 pull_number: prNumber
             });
-            console.log("Found the following data", pullRequest);
+            core.debug(`pr data ${JSON.stringify(pullRequest)}`);
             core.debug(`fetching changed files for pr #${prNumber}`);
-            const changedFiles = yield getChangedFiles(client, prNumber);
-            const labelGlobs = yield getLabelGlobs(client, configPath);
-            const labels = [];
-            for (const [label, globs] of labelGlobs.entries()) {
-                core.debug(`processing ${label}`);
-                if (checkGlobs(changedFiles, globs)) {
-                    labels.push(label);
-                }
-            }
-            if (labels.length > 0) {
-                yield addLabels(client, prNumber, labels);
-            }
+            const allowedFormats = yield getAllowedFormats(client, configPath);
+            core.debug(`allowed formats #${JSON.stringify(allowedFormats)}`);
         }
         catch (error) {
             core.error(error);
@@ -14577,29 +14567,13 @@ function getPrNumber() {
     }
     return pullRequest.number;
 }
-function getChangedFiles(client, prNumber) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const listFilesOptions = client.pulls.listFiles.endpoint.merge({
-            owner: github.context.repo.owner,
-            repo: github.context.repo.repo,
-            pull_number: prNumber
-        });
-        const listFilesResponse = yield client.paginate(listFilesOptions);
-        const changedFiles = listFilesResponse.map(f => f.filename);
-        core.debug("found changed files:");
-        for (const file of changedFiles) {
-            core.debug("  " + file);
-        }
-        return changedFiles;
-    });
-}
-function getLabelGlobs(client, configurationPath) {
+function getAllowedFormats(client, configurationPath) {
     return __awaiter(this, void 0, void 0, function* () {
         const configurationContent = yield fetchContent(client, configurationPath);
         // loads (hopefully) a `{[label:string]: string | StringOrMatchConfig[]}`, but is `any`:
         const configObject = yaml.safeLoad(configurationContent);
         // transform `any` => `Map<string,StringOrMatchConfig[]>` or throw if yaml is malformed:
-        return getLabelGlobMapFromObject(configObject);
+        return getAllowedFormatsFromObject(configObject);
     });
 }
 function fetchContent(client, repoPath) {
@@ -14613,20 +14587,17 @@ function fetchContent(client, repoPath) {
         return Buffer.from(response.data.content, response.data.encoding).toString();
     });
 }
-function getLabelGlobMapFromObject(configObject) {
-    const labelGlobs = new Map();
+function getAllowedFormatsFromObject(configObject) {
+    const allowedFormats = [];
     for (const label in configObject) {
         if (typeof configObject[label] === "string") {
-            labelGlobs.set(label, [configObject[label]]);
-        }
-        else if (configObject[label] instanceof Array) {
-            labelGlobs.set(label, configObject[label]);
+            allowedFormats.push(configObject[label]);
         }
         else {
             throw Error(`found unexpected type for label ${label} (should be string or array of globs)`);
         }
     }
-    return labelGlobs;
+    return allowedFormats;
 }
 function checkGlobs(changedFiles, globs) {
     for (const glob of globs) {
