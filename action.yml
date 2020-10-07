@@ -20,7 +20,12 @@ inputs:
       "Comment for the bot to post on PRs that fail the regex. Use %regex% to
       reference regex."
     required: false
-    default: "PR title failed to match %regex%."
+    default: "Pull request title can be in one of the following formats:\n%formats%"
+  on-title-corrected-comment:
+    description:
+      "Comment for the bot to post on PRs when the title is corrected."
+    required: false
+    default: "All good!"
   on-failed-regex-fail-action:
     description: "Whether the action should fail when the regex doesn't match."
     required: false
