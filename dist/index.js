@@ -13619,10 +13619,11 @@ const titlePrefixes = core.getInput("prefixes", {
 const titleFallback = core.getInput("no-ticket", {
     required: true,
 });
-const onFailedRegexCreateReviewInput = core.getInput("on-failed-regex-create-review") == "true";
+const onFailedRegexCreateReviewInput = core.getInput("on-failed-regex-create-review") === "true";
 const onFailedRegexCommentInput = core.getInput("on-failed-regex-comment");
-const onFailedRegexFailActionInput = core.getInput("on-failed-regex-fail-action") == "true";
-const onFailedRegexRequestChanges = core.getInput("on-failed-regex-request-changes") == "true";
+const onTitleCorrectedCommentInput = core.getInput("on-title-corrected-comment");
+const onFailedRegexFailActionInput = core.getInput("on-failed-regex-fail-action") === "true";
+const onFailedRegexRequestChanges = core.getInput("on-failed-regex-request-changes") === "true";
 function run() {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
@@ -13676,7 +13677,7 @@ function dismissReview(pullRequest) {
                     repo: pullRequest.repo,
                     pull_number: pullRequest.number,
                     review_id: review.id,
-                    message: "All good 🙋‍♂️",
+                    message: onTitleCorrectedCommentInput,
                 });
             }
         });

@@ -11,14 +11,17 @@ const titleFallback: string = core.getInput("no-ticket", {
   required: true,
 });
 const onFailedRegexCreateReviewInput: boolean =
-    core.getInput("on-failed-regex-create-review") == "true";
+    core.getInput("on-failed-regex-create-review") === "true";
 const onFailedRegexCommentInput: string = core.getInput(
     "on-failed-regex-comment"
 );
+const onTitleCorrectedCommentInput: string = core.getInput(
+    "on-title-corrected-comment"
+);
 const onFailedRegexFailActionInput: boolean =
-    core.getInput("on-failed-regex-fail-action") == "true";
+    core.getInput("on-failed-regex-fail-action") === "true";
 const onFailedRegexRequestChanges: boolean =
-    core.getInput("on-failed-regex-request-changes") == "true";
+    core.getInput("on-failed-regex-request-changes") === "true";
 
 async function run(): Promise<void> {
   const githubContext = github.context;
@@ -28,6 +31,7 @@ async function run(): Promise<void> {
   const titleRegex = new RegExp(titleRegexInput);
   const title: string =
       (githubContext.payload.pull_request?.title as string) ?? "";
+
   const comment = onFailedRegexCommentInput.replace(
       "%formats%",
       [
@@ -87,7 +91,7 @@ async function dismissReview(pullRequest: {
         repo: pullRequest.repo,
         pull_number: pullRequest.number,
         review_id: review.id,
-        message: "All good 🙋‍♂️",
+        message: onTitleCorrectedCommentInput,
       });
     }
   });
